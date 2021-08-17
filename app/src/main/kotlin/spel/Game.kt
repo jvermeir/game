@@ -4,7 +4,6 @@ import spel.Logger.log
 
 /*
 TODO:
- - replace top tile if player looses round
  - refactor tests to fix duplication
  - allow stealing tiles from other players
  - try out different strategy (steal if possible, try for >30 tile if player owns no tiles yet)
