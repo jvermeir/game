@@ -231,6 +231,27 @@ class TurnTest {
         )
     }
 
+    @Test
+    fun testPlayerLosesTopTileIfPlayFailed() {
+        Logger.logLevel = 2
+        val listOfThrows = listOf(
+            Dice(2),Dice(2),Dice(2),Dice(2),Dice(2),Dice(2),Dice(2),Dice(1),
+            Dice(2)
+        ).stream().iterator()
+
+        fun testThrowDiceMethod(): Dice {
+            return listOfThrows.next()
+        }
+
+        Config.throwDiceMethod = ::testThrowDiceMethod
+
+        val board = Board("board at start of game")
+        val player = Player("player1", mutableListOf(Tile(21)), ThrowToFirstTileStrategy())
+        player.doTurn(board)
+
+        assertTrue(player.turns.last().moves.last() is PlayFailedMove, "expecting PlayFailed status")
+        assertEquals(listOf(), player.tilesWon, "expecting player to lose the top tile if PlayFailed")
+    }
 }
 
 class BoardTest {

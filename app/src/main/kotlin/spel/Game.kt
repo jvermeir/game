@@ -1,14 +1,15 @@
 package spel
 
+import spel.Logger.log
+
 /*
 TODO:
  - replace top tile if player looses round
+ - refactor tests to fix duplication
  - allow stealing tiles from other players
- - try out different strategy
+ - try out different strategy (steal if possible, try for >30 tile if player owns no tiles yet)
  - allow human players to participate
  */
-
-var logLevel = 1
 
 fun main() {
     val board = Board("myBoard")
@@ -46,15 +47,19 @@ val NullTile = Tile(0)
 data class PlayResult(val moves: List<Move>, val board: Board)
 
 data class Player(val name: String, val tilesWon: MutableList<Tile> = mutableListOf(), val strategy: Strategy) {
+    val turns = mutableListOf<Turn>()
     fun doTurn(board: Board): Player {
-        log(2, "doTurn (start): $name playing, tilesWon: $tilesWon")
+        Logger.log(2, "doTurn (start): $name playing, tilesWon: $tilesWon")
 
         val turn = Turn(strategy, board)
+        turns.add(turn)
         val (moves, _) = turn.play()
         if (moves.last() is StopTurnMove) {
             tilesWon.add(turn.tileSelected)
+        } else if (moves.last() is PlayFailedMove){
+            if (!tilesWon.isEmpty()) tilesWon.removeLast()
         }
-        log(2,"doTurn (end): $name playing, tilesWon: $tilesWon")
+        Logger.log(2, "doTurn (end): $name playing, tilesWon: $tilesWon")
         return Player(name, tilesWon, strategy)
     }
 }
@@ -72,7 +77,8 @@ data class Turn(val strategy: Strategy, val board: Board) {
         if (hasStopped()) {
             return PlayResult(moves, board)
         }
-        return PlayResult(moves + PlayFailedMove(0), board)
+        moves = moves + PlayFailedMove(0)
+        return PlayResult(moves, board)
     }
 
     fun movesAreStillPossible(): Boolean {
@@ -87,10 +93,10 @@ data class Turn(val strategy: Strategy, val board: Board) {
     }
 
     fun makeMove(): Move {
-        log(2,"MakeMove with moves = $moves, numberOfDiceLeft: $numberOfDiceLeft, facesUses: $facesUsed")
+        Logger.log(2, "MakeMove with moves = $moves, numberOfDiceLeft: $numberOfDiceLeft, facesUses: $facesUsed")
         val nextMove = strategy.makeMove(this)
         val selected = strategy.selectDiceFromThrow(nextMove.resultOfThrow, this)
-        log(2,"nextMove: $nextMove, throwing: ${nextMove.resultOfThrow}, selected: $selected")
+        Logger.log(2, "nextMove: $nextMove, throwing: ${nextMove.resultOfThrow}, selected: $selected")
         if (selected.isEmpty()) {
             moves = moves + PlayFailedMove(0)
             return PlayFailedMove(0)
@@ -100,20 +106,20 @@ data class Turn(val strategy: Strategy, val board: Board) {
         facesUsed = facesUsed + selected.first()
         numberOfDiceLeft -= selected.size
         moves = moves + nextMove
-        log(2,"moves: $moves")
-        val total = moves.sumBy{move -> move.diceSelected.sumBy { dice -> dice.numericValue }}
-        log(2,"total: $total")
+        Logger.log(2, "moves: $moves")
+        val total = moves.sumBy { move -> move.diceSelected.sumBy { dice -> dice.numericValue } }
+        Logger.log(2, "total: $total")
 
         if (strategy.shouldIContinue(moves, board)) {
-            log(2,"continue")
+            Logger.log(2, "continue")
             return nextMove
         }
-        log(2,"stop")
+        Logger.log(2, "stop")
         val takeTileMove = TakeTileMove(0)
         takeTileMove.takeBestTile(board, this)
         tileSelected = takeTileMove.bestTile
         moves = moves + takeTileMove + StopTurnMove(0)
-        log(2,"tileSelected: $tileSelected, moves: $moves")
+        Logger.log(2, "tileSelected: $tileSelected, moves: $moves")
         return StopTurnMove(0)
     }
 }
@@ -142,12 +148,12 @@ data class ThrowDiceMove(override val diceRemaining: Int) : Move(diceRemaining) 
 class TakeTileMove(override val diceRemaining: Int) : Move(diceRemaining) {
     var bestTile: Tile = NullTile
     fun takeBestTile(board: Board, turn: Turn) {
-        log(2,"moves in takeTileMove: $board.moves")
+        Logger.log(2, "moves in takeTileMove: $board.moves")
         val totalValue = totalValueOfDice(turn.moves)
         bestTile = highestTileWithValueNotBiggerThanX(totalValue, board.tiles)
-        log(2,"bestTile: $bestTile, totalValue: $totalValue")
-        if (bestTile.value==0)
-            log(1,"Error: Tile(0) selected")
+        Logger.log(2, "bestTile: $bestTile, totalValue: $totalValue")
+        if (bestTile.value == 0)
+            Logger.log(1, "Error: Tile(0) selected")
         board.remove(bestTile)
     }
 }
@@ -164,7 +170,7 @@ open class Strategy {
     }
 
     open fun shouldIContinue(moves: List<Move>, board: Board): Boolean {
-        log(2,"this shouldn't happen")
+        Logger.log(2, "this shouldn't happen")
         return false
     }
 
@@ -174,15 +180,15 @@ open class Strategy {
 }
 
 class ThrowToFirstTileStrategy() : Strategy() {
-    override fun shouldIContinue(moves: List<Move>, board:Board): Boolean {
-        log(2,"shouldIContinue, board: $board")
+    override fun shouldIContinue(moves: List<Move>, board: Board): Boolean {
+        Logger.log(2, "shouldIContinue, board: $board")
         val totalValue = totalValueOfDice(moves)
-        log(2,"shouldIContinue, totalValue: $totalValue")
+        Logger.log(2, "shouldIContinue, totalValue: $totalValue")
         if (totalValue == 0) return true
-        if (moves.filter{move -> move.diceSelected.contains(Dice(6))}.isEmpty()) return true
+        if (moves.filter { move -> move.diceSelected.contains(Dice(6)) }.isEmpty()) return true
 
         val x = highestTileWithValueNotBiggerThanX(totalValue, board.tiles).value
-        log(2,"x: $x")
+        Logger.log(2, "x: $x")
         if (x == 0) return true
         if (x <= totalValue) return false
         return true
@@ -205,7 +211,7 @@ fun totalValueOfDice(moves: List<Move>) =
 
 fun highestTileWithValueNotBiggerThanX(value: Int, tiles: List<Tile>): Tile {
     val possibleSolutions = tiles.filter { tile -> tile.value <= value }
-    log(2,"highestTileWithValueNotBiggerThanX, possibleSolutions: $possibleSolutions")
+    Logger.log(2, "highestTileWithValueNotBiggerThanX, possibleSolutions: $possibleSolutions")
     if (possibleSolutions.isEmpty()) return NullTile
     return possibleSolutions.last()
 }
@@ -231,6 +237,9 @@ data class Board(val name: String) {
     }
 }
 
-fun log(level: Int, message: String) {
-    if (level <= logLevel) println(message)
+object Logger {
+    var logLevel = 1
+    fun Logger.log(level: Int, message: String) {
+        if (level <= logLevel) println(message)
+    }
 }
