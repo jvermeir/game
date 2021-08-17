@@ -2,7 +2,6 @@ package spel
 
 /*
 TODO:
- - lose if there's no worm
  - replace top tile if player looses round
  - allow stealing tiles from other players
  - try out different strategy
@@ -89,11 +88,10 @@ data class Turn(val strategy: Strategy, val board: Board) {
 
     fun makeMove(): Move {
         log(2,"MakeMove with moves = $moves, numberOfDiceLeft: $numberOfDiceLeft, facesUses: $facesUsed")
-// TODO: test for this case (no dice can be selected after a throw)
         val nextMove = strategy.makeMove(this)
         val selected = strategy.selectDiceFromThrow(nextMove.resultOfThrow, this)
         log(2,"nextMove: $nextMove, throwing: ${nextMove.resultOfThrow}, selected: $selected")
-        if ( selected.isEmpty()) {
+        if (selected.isEmpty()) {
             moves = moves + PlayFailedMove(0)
             return PlayFailedMove(0)
         }
@@ -181,6 +179,8 @@ class ThrowToFirstTileStrategy() : Strategy() {
         val totalValue = totalValueOfDice(moves)
         log(2,"shouldIContinue, totalValue: $totalValue")
         if (totalValue == 0) return true
+        if (moves.filter{move -> move.diceSelected.contains(Dice(6))}.isEmpty()) return true
+
         val x = highestTileWithValueNotBiggerThanX(totalValue, board.tiles).value
         log(2,"x: $x")
         if (x == 0) return true

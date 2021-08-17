@@ -128,7 +128,7 @@ class ThrowToFirstTileStrategyTest {
                     moves[2] is TakeTileMove &&
                     moves[3] is StopTurnMove, "expecting 2 ThrowDiceMoves, 1 TakeTileMove and 1 StopTurnMove"
         )
-        assertEquals(Tile(25), (moves[2] as TakeTileMove).bestTile, "Expecting tile 23 to be selected")
+        assertEquals(Tile(23), (moves[2] as TakeTileMove).bestTile, "Expecting tile 23 to be selected")
     }
 }
 
@@ -179,6 +179,58 @@ class TurnTest {
                     moves[1] is PlayFailedMove, "expecting 1 ThrowDiceMove and 1 PlayFailedMove"
         )
     }
+
+    @Test
+    fun testTurnContinuesUntilAtLeastOneWormIsThrown() {
+        val listOfThrows = listOf(Dice(5), Dice(5), Dice(5), Dice(5), Dice(5), Dice(1),
+            Dice(6), Dice(6), Dice(6), Dice(6), Dice(6), Dice(6)
+        ).stream().iterator()
+
+        fun testThrowDiceMethod(): Dice {
+            return listOfThrows.next()
+        }
+
+        Config.throwDiceMethod = ::testThrowDiceMethod
+
+        val board = Board("board at start of game")
+        val turn = Turn(ThrowToFirstTileStrategy(), board)
+        turn.numberOfDiceLeft = 6
+        val (moves, _) = turn.play()
+        assertEquals(4, moves.size, "expecting 4 moves")
+        assertTrue(
+            moves[0] is ThrowDiceMove &&
+                   moves[1] is ThrowDiceMove &&
+                   moves[2] is TakeTileMove &&
+                   moves[3] is StopTurnMove
+            , "expecting 2 ThrowDiceMoves, 1 TakeTileMove and 1 StopTurnMove"
+        )
+    }
+
+    @Test
+    fun testPlayerLosesTurnIfNoWormIsThrown() {
+        val listOfThrows = listOf(Dice(5), Dice(5), Dice(5), Dice(5), Dice(5), Dice(1),
+            Dice(1)
+        ).stream().iterator()
+
+        fun testThrowDiceMethod(): Dice {
+            return listOfThrows.next()
+        }
+
+        Config.throwDiceMethod = ::testThrowDiceMethod
+
+        val board = Board("board at start of game")
+        val turn = Turn(ThrowToFirstTileStrategy(), board)
+        turn.numberOfDiceLeft = 6
+        val (moves, _) = turn.play()
+        assertEquals(3, moves.size, "expecting 3 moves")
+        assertTrue(
+            moves[0] is ThrowDiceMove &&
+                    moves[1] is ThrowDiceMove &&
+                    moves[2] is PlayFailedMove
+            , "expecting 2 ThrowDiceMoves, 1 PlayFailedMove"
+        )
+    }
+
 }
 
 class BoardTest {
@@ -211,7 +263,7 @@ class BoardTest {
 class PlayerTest {
     @Test
     fun testPlayerResultsAreUpdatedAfterATurn() {
-        val listOfThrows = (1..16).map { Dice(4) }.stream().iterator()
+        val listOfThrows = (1..16).map { Dice(6) }.stream().iterator()
 
         fun testThrowDiceMethod(): Dice {
             return listOfThrows.next()
@@ -222,8 +274,8 @@ class PlayerTest {
         val board = Board("board at start of game")
         val player = Player("player1", mutableListOf(), ThrowToFirstTileStrategy())
         val playerAfterFirstRound = player.doTurn(board)
-        assertEquals(listOf(Tile(32)), playerAfterFirstRound.tilesWon, "expecting Tile(32) to be won after 1st round")
-        assertEquals(-1, board.tiles.lastIndexOf(Tile(32)), "expecting Tile(32) to be removed from the board")
+        assertEquals(listOf(Tile(36)), playerAfterFirstRound.tilesWon, "expecting Tile(36) to be won after 1st round")
+        assertEquals(-1, board.tiles.lastIndexOf(Tile(36)), "expecting Tile(36) to be removed from the board")
     }
 }
 
