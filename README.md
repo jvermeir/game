@@ -3,11 +3,16 @@
 Goals:
 - learn Kotlin 
 - find the best strategy to play a board game named 'worms'
-- explore integration of machines in the real world 
+- explore integration of machines in the real world, like 
+  - automatically sum the value of a throw of real world dice
+  - allow one or more flesh-and-blood players 
+  - move tiles and dice using a robotic arm  
 
 muhahaha!! dude, you're never gonna reach those goals. 
 
 ## Based on ... 
+
+Worms game by ...
 
 Parsing commandline arguments:
 

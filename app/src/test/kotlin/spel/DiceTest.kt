@@ -24,7 +24,7 @@ class ThrowTest {
         Config.throwDiceMethod = Config::regularThrowDiceMethod
 
         val numberOfThrows = 5
-        val values = Throw(numberOfThrows).doThrow()
+        val values = Throw.throwDice(numberOfThrows)
 
         assertEquals(numberOfThrows, values.size, "size should be $numberOfThrows")
     }
@@ -34,7 +34,7 @@ class ThrowTest {
         Config.throwDiceMethod = Config::regularThrowDiceMethod
 
         val numberOfThrows = 5000
-        val values = Throw(numberOfThrows).doThrow()
+        val values = Throw.throwDice(numberOfThrows)
         val countByValue = values.groupBy({it}, {it})
 
         assertEquals(6, countByValue.size, "all dice values should be selected at least once")

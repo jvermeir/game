@@ -9,10 +9,15 @@ fun rand(start: Int, end: Int): Int {
 }
 
 data class Dice(val value: Int) {
-    val numericValue= if (value == 6) 5 else value
+    val numericValue = if (value == 6) 5 else value
 
     override fun toString(): String {
         return if (value == 6) "worm" else "$value"
+    }
+}
+object Throw {
+    fun throwDice(numberOfDice: Int = 8): List<Dice> {
+        return (Array(numberOfDice) { Config.throwDice() }).asList()
     }
 }
 
@@ -23,15 +28,7 @@ object Config {
 
     var throwDiceMethod: () -> Dice = ::regularThrowDiceMethod
 
-    fun throwDice():Dice {
+    fun throwDice(): Dice {
         return throwDiceMethod()
     }
 }
-
-data class Throw(val numberOfDice: Int = 8) {
-    fun doThrow(): List<Dice> {
-        val dice = Array(numberOfDice) { Config.throwDice() }
-        return dice.asList()
-    }
-}
-
