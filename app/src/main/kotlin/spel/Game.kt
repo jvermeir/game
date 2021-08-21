@@ -8,7 +8,7 @@ import com.github.ajalt.clikt.parameters.types.int
 /*
 TODO:
  - try out different strategy (
-    - take lower value tile if early in a throw
+    - take lower value dice if early in a throw (e.g. prefer 3 x 4 over 1 times 5 or worm)
     - try for >30 tile if player owns no tiles yet
     - calculate possible outcomes and their odds
  - allow human players to participate
@@ -34,11 +34,15 @@ class Simulator : CliktCommand() {
             results.add(Result(game.players))
         }
         val sortedResults = results.sortedByDescending { it.totalValue(it.winner.tilesWon) }.take(10)
-        sortedResults.forEach { result -> println("name: ${result.winner.name}, tiles:${result.winner.tilesWon}") }
+        sortedResults.forEach { result -> println("name: ${result.winner.name}, tiles:${result.winner.tilesWon}, value: ${result.playersSortedByValue.first().second}") }
     }
 }
 
 data class Result(val players: Array<Player>) {
+    val playersSortedByValue = players
+        .map { player -> Pair(player, totalValue(player.tilesWon))}
+        .sortedByDescending { pair -> pair.second }
+
     val winner = players.maxByOrNull { totalValue(it.tilesWon) }!!
 
     fun totalValue(tiles: List<Tile>): Int {
@@ -268,9 +272,6 @@ fun findTileThatCanBeStolen(playerWithTileThatCanBeStolen: Player?): Tile {
 }
 
 class StopAfterFirstTileStrategy : Strategy() {
-    /*
-    Using this strategy, the game always ends with 1 player in possession of 1 tile (sometimes 2), most often a higher value one like 34 or 36.
-     */
     override fun shouldIContinue(moves: List<Move>, game: Game): Boolean {
         Logger.log(2, "shouldIContinue, board: ${game.board}")
         val totalValue = totalValueOfDice(moves)
