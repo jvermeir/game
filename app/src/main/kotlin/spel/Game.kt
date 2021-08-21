@@ -7,8 +7,6 @@ import com.github.ajalt.clikt.parameters.types.int
 
 /*
 TODO:
- - check rules...
- - refactor tests to fix duplication
  - try out different strategy (
     - take lower value tile if early in a throw
     - try for >30 tile if player owns no tiles yet

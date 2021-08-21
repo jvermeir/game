@@ -5,12 +5,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-/*
-TODO:
-- test: what happens if a player can take a tile from another player, but also a tile with a lower value from the list of tiles?
-- test: if a turn fails, the tile with the highest value that is still in the list should be removed from the game
-    except if this is the tile that was just returned by the player
- */
 class GameTest {
     class TestStrategy : Strategy() {
         override fun selectDiceFromThrow(diceInThrow: List<Dice>, turn: Turn): List<Dice> {
