@@ -6,15 +6,24 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class GameTest {
+    private val player1 = Player("1", mutableListOf(), TestStrategy())
+    private val player2 = Player("2", mutableListOf(), TestStrategy())
+    private val twoPlayers = arrayOf(player1, player2)
+
     class TestStrategy : Strategy() {
+        override fun makeMove(board: Board, turn: Turn): Move {
+            return StopTurnMove(Turn(this, Game(Board("board"), emptyArray())))
+        }
+
+        override fun shouldIContinue(moves: List<Move>, game: Game): Boolean {
+            return false
+        }
+
         override fun selectDiceFromThrow(diceInThrow: List<Dice>, turn: Turn): List<Dice> {
             return listOf(Dice(25))
         }
     }
 
-    private val player1 = Player("1", mutableListOf(), TestStrategy())
-    private val player2 = Player("2", mutableListOf(), TestStrategy())
-    private val twoPlayers = arrayOf(player1, player2)
 
     @Test
     fun test3PlayersTakeTurns() {
@@ -158,7 +167,7 @@ class StopAfterFirstTileStrategyTest {
         val game = Game(board, players)
         game.nextPlayer()
 
-        val turn = Turn(Strategy(), game)
+        val turn = Turn(StopAfterFirstTileStrategy(), game)
         val takeTileMove = TakeTileMove(turn, game)
         takeTileMove.diceSelected = listOf(Dice(6), Dice(6), Dice(6), Dice(6), Dice(6))
         turn.moves = listOf(takeTileMove)
@@ -209,7 +218,7 @@ class TurnTest {
     fun testMovesArePossibleConditions() {
         val board = Board("board at start of game")
         val game = Game(board, arrayOf())
-        val turn = Turn(Strategy(), game)
+        val turn = Turn(StopAfterFirstTileStrategy(), game)
         assertTrue(turn.movesAreStillPossible(), "moves should still be possible if there are no previous moves")
 
         turn.numberOfDiceLeft = 2
@@ -221,7 +230,7 @@ class TurnTest {
     fun testEndConditions() {
         val board = Board("board at start of game")
         val game = Game(board, arrayOf())
-        val turn = Turn(Strategy(), game)
+        val turn = Turn(StopAfterFirstTileStrategy(), game)
         turn.numberOfDiceLeft = 0
         assertFalse(turn.movesAreStillPossible(), "moves should be impossible if all dice were used")
 

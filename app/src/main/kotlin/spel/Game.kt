@@ -76,7 +76,7 @@ data class Game(val board: Board = Board("spel"), val players: Array<Player>) {
 
 data class Tile(val value: Int) : Comparable<Tile> {
     val score: Int =
-        if (value == 0) 0
+        if (value < 21) 0
         else if (value < 25) 1
         else if (value < 29) 2
         else if (value < 33) 3
@@ -244,20 +244,12 @@ data class StopTurnMove(val turn: Turn) : Move() {
     }
 }
 
-// TODO: abstract methods?
-open class Strategy {
-    open fun makeMove(board: Board, turn: Turn): Move {
-        return StopTurnMove(turn)
-    }
+abstract class Strategy {
+    abstract fun makeMove(board: Board, turn: Turn): Move
 
-    open fun shouldIContinue(moves: List<Move>, game: Game): Boolean {
-        Logger.log(2, "this shouldn't happen")
-        return false
-    }
+    abstract fun shouldIContinue(moves: List<Move>, game: Game): Boolean
 
-    open fun selectDiceFromThrow(diceInThrow: List<Dice>, turn: Turn): List<Dice> {
-        return listOf()
-    }
+    abstract fun selectDiceFromThrow(diceInThrow: List<Dice>, turn: Turn): List<Dice>
 }
 
 fun findPlayerWithTileThatCanBeStolen(totalValue: Int, game: Game): Player? {
@@ -306,18 +298,18 @@ class StopAfterFirstTileStrategy : Strategy() {
     }
 }
 
-class ContinueIfMoreThanFiveDiceAreLeftStrategy : Strategy() {
-    // TODO
-}
-
-class FavourTripleThrowsStrategy : Strategy() {
-    // ie.: 3x4-dice > 2x5-dice > 1xWorm
-
-}
-
-class ContinueIfOddsAreHighEnoughStrategy : Strategy() {
-    // if a player could take a tile but the odds of winning a higher value tile are better than 50% -> continue
-}
+//class ContinueIfMoreThanFiveDiceAreLeftStrategy : Strategy() {
+//    // TODO
+//}
+//
+//class FavourTripleThrowsStrategy : Strategy() {
+//    // ie.: 3x4-dice > 2x5-dice > 1xWorm
+//
+//}
+//
+//class ContinueIfOddsAreHighEnoughStrategy : Strategy() {
+//    // if a player could take a tile but the odds of winning a higher value tile are better than 50% -> continue
+//}
 
 
 fun totalValueOfDice(moves: List<Move>) =
