@@ -75,9 +75,10 @@ data class Game(val board: Board = Board("spel"), val players: Array<Player>) {
 data class Tile(val value: Int) : Comparable<Tile> {
     val score: Int =
         if (value == 0) 0
-        else if (value < 27) 1
-        else if (value < 32) 2
-        else 3
+        else if (value < 25) 1
+        else if (value < 29) 2
+        else if (value < 33) 3
+        else 4
 
     override fun compareTo(other: Tile): Int {
         return this.value.compareTo(other.value)
@@ -100,14 +101,24 @@ data class Player(val name: String, val tilesWon: MutableList<Tile> = mutableLis
         if (moves.last() is StopTurnMove) {
             tilesWon.add(turn.tileSelected)
         } else if (moves.last() is PlayFailedMove) {
-            if (tilesWon.isNotEmpty()) {
-                Logger.log(2, "removing ${tilesWon.last()}")
-                tilesWon.removeLast()
-            }
+            handlePlayFailedMove(game)
         }
 
         Logger.log(2, "doTurn (end): $name playing, tilesWon: $tilesWon")
         return Player(name, tilesWon, strategy)
+    }
+
+    private fun handlePlayFailedMove(game: Game) {
+        if (tilesWon.isNotEmpty()) {
+            val tileToBeReturned: Tile = tilesWon.removeLast()
+            val lastTileOnTheBoard = game.board.tiles.last()
+            if (lastTileOnTheBoard > tileToBeReturned) game.board.remove(lastTileOnTheBoard)
+            val newTiles: MutableList<Tile> = mutableListOf()
+            newTiles.addAll(game.board.tiles)
+            newTiles.add(tileToBeReturned)
+            newTiles.sort()
+            game.board.tiles = newTiles
+        }
     }
 
     fun getLastWonTile(): Tile {
@@ -176,7 +187,7 @@ data class Turn(val strategy: Strategy, val game: Game) {
     }
 }
 
-open class Move() {
+open class Move {
     open val resultOfThrow: List<Dice> = listOf()
     open var diceSelected: List<Dice> = listOf()
     open var tileSelected: Tile = NullTile
@@ -231,6 +242,7 @@ data class StopTurnMove(val turn: Turn) : Move() {
     }
 }
 
+// TODO: abstract methods?
 open class Strategy {
     open fun makeMove(board: Board, turn: Turn): Move {
         return StopTurnMove(turn)
@@ -248,15 +260,13 @@ open class Strategy {
 
 fun findPlayerWithTileThatCanBeStolen(totalValue: Int, game: Game): Player? {
     return game.players.asList()
-        .filter{player -> player != game.getCurrentPlayer()}
+        .filter { player -> player != game.getCurrentPlayer() }
         .firstOrNull { player -> player.getLastWonTile().value == totalValue }
 }
 
 fun findTileThatCanBeStolen(playerWithTileThatCanBeStolen: Player?): Tile {
-    val tileThatCanBeStolen =
-        if (playerWithTileThatCanBeStolen == null) NullTile
-        else playerWithTileThatCanBeStolen.getLastWonTile()
-    return tileThatCanBeStolen
+    if (playerWithTileThatCanBeStolen == null) return NullTile
+    else return playerWithTileThatCanBeStolen.getLastWonTile()
 }
 
 class StopAfterFirstTileStrategy : Strategy() {
@@ -288,7 +298,7 @@ class StopAfterFirstTileStrategy : Strategy() {
         return ThrowDiceMove(board, turn)
     }
 
-    // TODO: alternative would be to select dice that add up to a stealable value.
+    // TODO: alternative would be to select dice that add up to a stealable value or the value of a tile that is still available.
     override fun selectDiceFromThrow(diceInThrow: List<Dice>, turn: Turn): List<Dice> {
         val diceAllowed = diceInThrow.minus(turn.facesUsed)
         if (diceAllowed.isEmpty()) return listOf()

@@ -5,6 +5,12 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
+/*
+TODO:
+- test: what happens if a player can take a tile from another player, but also a tile with a lower value from the list of tiles?
+- test: if a turn fails, the tile with the highest value that is still in the list should be removed from the game
+    except if this is the tile that was just returned by the player
+ */
 class GameTest {
     class TestStrategy : Strategy() {
         override fun selectDiceFromThrow(diceInThrow: List<Dice>, turn: Turn): List<Dice> {
@@ -27,17 +33,7 @@ class GameTest {
     }
 
     @Test
-    fun testGameStopsIfAllTilesAreUsed() {
-        val board = Board("myBoard")
-        board.tiles = listOf()
-        val game = Game(board, twoPlayers)
-        game.play()
-        assertEquals(player1, game.getCurrentPlayer(), "expecting player1 to be current")
-    }
-
-    @Test
     fun testGameStopsIfAllTilesAreUsed2() {
-        Logger.logLevel = 2
         val listOfThrows = (1..16).map { Dice(6) }.stream().iterator()
 
         fun testThrowDiceMethod(): Dice {
@@ -66,13 +62,13 @@ class StopAfterFirstTileStrategyTest {
         val strategy = StopAfterFirstTileStrategy()
         val turn = Turn(strategy, game)
 
-        val t1 = listOf(Dice(6), Dice(6), Dice(6), Dice(5), Dice(5), Dice(5), Dice(1), Dice(2))
-        val selectDiceFromThrow = strategy.selectDiceFromThrow(t1, turn)
+        val listOfDice1 = listOf(Dice(6), Dice(6), Dice(6), Dice(5), Dice(5), Dice(5), Dice(1), Dice(2))
+        val selectDiceFromThrow = strategy.selectDiceFromThrow(listOfDice1, turn)
         assertEquals(listOf(Dice(6), Dice(6), Dice(6)), selectDiceFromThrow, "first throw should select 3 worms")
 
         turn.facesUsed = listOf(Dice(6))
-        val t2 = listOf(Dice(6), Dice(6), Dice(6), Dice(5), Dice(5))
-        val selectDiceFromSecondThrow = strategy.selectDiceFromThrow(t2, turn)
+        val listOfDice2 = listOf(Dice(6), Dice(6), Dice(6), Dice(5), Dice(5))
+        val selectDiceFromSecondThrow = strategy.selectDiceFromThrow(listOfDice2, turn)
         assertEquals(
             listOf(Dice(5), Dice(5)),
             selectDiceFromSecondThrow,
@@ -144,8 +140,10 @@ class StopAfterFirstTileStrategyTest {
         val player1 = Player("1", mutableListOf(Tile(23)), GameTest.TestStrategy())
         val player2 = Player("2", mutableListOf(), GameTest.TestStrategy())
         val players = arrayOf(player1, player2)
+
         val game = Game(board, players)
         game.nextPlayer()
+
         val tile = findTileThatCanBeStolen(findPlayerWithTileThatCanBeStolen(23, game))
         assertEquals(Tile(23), tile, "expecting player2 can steal Tile(23) from player1")
 
@@ -157,7 +155,6 @@ class StopAfterFirstTileStrategyTest {
     @Test
     fun testShouldIContinueIsFalseIfTileCanBeStolen() {
         val board = Board("board at start of game")
-
         board.tiles = listOf(Tile(23))
 
         val player1 = Player("1", mutableListOf(Tile(25)), GameTest.TestStrategy())
@@ -169,17 +166,19 @@ class StopAfterFirstTileStrategyTest {
 
         val turn = Turn(Strategy(), game)
         val takeTileMove = TakeTileMove(turn, game)
-        takeTileMove.diceSelected = listOf(Dice(6),Dice(6),Dice(6),Dice(6),Dice(6))
+        takeTileMove.diceSelected = listOf(Dice(6), Dice(6), Dice(6), Dice(6), Dice(6))
         turn.moves = listOf(takeTileMove)
 
-        assertFalse(StopAfterFirstTileStrategy().shouldIContinue(turn.moves, game), "expecting turn to stop if a tile can be taken from another player")
+        assertFalse(
+            StopAfterFirstTileStrategy().shouldIContinue(turn.moves, game),
+            "expecting turn to stop if a tile can be taken from another player"
+        )
     }
 }
 
 class TakeTileMoveTest {
     @Test
     fun testMoveSelectsTileFromOtherPlayerIfHigher() {
-        Logger.logLevel = 2
         val listOfThrows = listOf(
             Dice(6), Dice(6), Dice(6), Dice(6), Dice(6), Dice(5), Dice(1), Dice(2)
         ).stream().iterator()
@@ -312,7 +311,7 @@ class TurnTest {
     }
 
     @Test
-    fun testPlayerLosesTopTileIfPlayFailed() {
+    fun testPlayerLosesTopTileIfPlayFailedAndHighestTileIsRemovedFromTheGame() {
         Logger.logLevel = 2
         val listOfThrows = listOf(
             Dice(2), Dice(2), Dice(2), Dice(2), Dice(2), Dice(2), Dice(2), Dice(1),
@@ -326,6 +325,7 @@ class TurnTest {
         Config.throwDiceMethod = ::testThrowDiceMethod
 
         val board = Board("board at start of game")
+        board.tiles = listOf(Tile(22), Tile(23))
         val player = Player("player1", mutableListOf(Tile(21)), StopAfterFirstTileStrategy())
         val game = Game(board, arrayOf(player))
 
@@ -333,6 +333,33 @@ class TurnTest {
 
         assertTrue(player.turns.last().moves.last() is PlayFailedMove, "expecting PlayFailed status")
         assertEquals(listOf(), player.tilesWon, "expecting player to lose the top tile if PlayFailed")
+        assertEquals(listOf(Tile(21), Tile(22)), board.tiles, "expecting last tile to be removed from the board")
+    }
+
+    @Test
+    fun testPlayerLosesTopTileIfPlayFailedAndThisTileIsTheNewHighestTile() {
+        Logger.logLevel = 2
+        val listOfThrows = listOf(
+            Dice(2), Dice(2), Dice(2), Dice(2), Dice(2), Dice(2), Dice(2), Dice(1),
+            Dice(2)
+        ).stream().iterator()
+
+        fun testThrowDiceMethod(): Dice {
+            return listOfThrows.next()
+        }
+
+        Config.throwDiceMethod = ::testThrowDiceMethod
+
+        val board = Board("board at start of game")
+        board.tiles = listOf(Tile(21), Tile(22))
+        val player = Player("player1", mutableListOf(Tile(23)), StopAfterFirstTileStrategy())
+        val game = Game(board, arrayOf(player))
+
+        player.doTurn(game)
+
+        assertTrue(player.turns.last().moves.last() is PlayFailedMove, "expecting PlayFailed status")
+        assertEquals(listOf(), player.tilesWon, "expecting player to lose the top tile if PlayFailed")
+        assertEquals(listOf(Tile(21), Tile(22), Tile(23)), board.tiles, "expecting last tile to be the tile the player lost")
     }
 }
 
@@ -377,7 +404,6 @@ class PlayerTest {
         val board = Board("board at start of game")
         val player = Player("player1", mutableListOf(), StopAfterFirstTileStrategy())
         val game = Game(board, arrayOf(player))
-
         val playerAfterFirstRound = player.doTurn(game)
         assertEquals(listOf(Tile(36)), playerAfterFirstRound.tilesWon, "expecting Tile(36) to be won after 1st round")
         assertEquals(-1, board.tiles.lastIndexOf(Tile(36)), "expecting Tile(36) to be removed from the board")
