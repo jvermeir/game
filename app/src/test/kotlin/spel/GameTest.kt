@@ -24,7 +24,6 @@ class GameTest {
         }
     }
 
-
     @Test
     fun test3PlayersTakeTurns() {
         val game = Game(Board("myBoard"), twoPlayers)

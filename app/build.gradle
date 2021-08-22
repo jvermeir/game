@@ -8,10 +8,11 @@
 
 plugins {
     // Apply the org.jetbrains.kotlin.jvm Plugin to add support for Kotlin.
-    id 'org.jetbrains.kotlin.jvm' version '1.4.20'
+    id 'org.jetbrains.kotlin.jvm' version '1.5.21'
 
     // Apply the application plugin to add support for building a CLI application in Java.
     id 'application'
+
 }
 
 repositories {
@@ -37,10 +38,9 @@ dependencies {
 
     // commandline args lib (https://github.com/ajalt/clikt)
     implementation("com.github.ajalt.clikt:clikt:3.2.0")
-
 }
 
 application {
     // Define the main class for the application.
-    mainClass = 'spel.AppKt'
+    mainClass = 'spel.Game'
 }

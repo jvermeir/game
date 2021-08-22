@@ -33,22 +33,37 @@ class Simulator : CliktCommand() {
             println("--")
             results.add(Result(game.players))
         }
-        val sortedResults = results.sortedByDescending { it.totalValue(it.winner.tilesWon) }.take(10)
-        sortedResults.forEach { result -> println("name: ${result.winner.name}, tiles:${result.winner.tilesWon}, value: ${result.playersSortedByValue.first().second}") }
+        val sortedResults = results.sortedByDescending { it.totalValue(it.winner.tilesWon) }
+        println("top 10")
+        sortedResults.take(10).forEach { result -> println("name: ${result.winner.name}, value: ${result.playersSortedByValue.first().second}, tilesOwnedByAPlayer:${result.tilesOwnedByAPlayer}, tilesNotOwned:${result.tilesNotOwned}") }
+        println("bottom 10")
+        sortedResults.takeLast(10).forEach { result -> println("name: ${result.winner.name}, value: ${result.playersSortedByValue.first().second}, tilesOwnedByAPlayer:${result.tilesOwnedByAPlayer}, tilesNotOwned:${result.tilesNotOwned}") }
+    }
+
+    data class Result(val players: Array<Player>) {
+        val playersSortedByValue = players
+            .map { player -> Pair(player, totalValue(player.tilesWon)) }
+            .sortedByDescending { pair -> pair.second }
+
+        val winner = players.maxByOrNull { totalValue(it.tilesWon) }!!
+
+        fun totalValue(tiles: List<Tile>): Int {
+            return tiles.sumOf { tile -> tile.score }
+        }
+
+        val tilesOwnedByAPlayer = players
+            .map { player -> player.tilesWon }
+            .flatten()
+            .sorted()
+
+        val tilesNotOwned =
+            (Board.firstTile.value..Board.lastTile.value)
+                .map { value -> Tile(value) }
+                .minus(tilesOwnedByAPlayer)
+                .sorted()
     }
 }
 
-data class Result(val players: Array<Player>) {
-    val playersSortedByValue = players
-        .map { player -> Pair(player, totalValue(player.tilesWon))}
-        .sortedByDescending { pair -> pair.second }
-
-    val winner = players.maxByOrNull { totalValue(it.tilesWon) }!!
-
-    fun totalValue(tiles: List<Tile>): Int {
-        return tiles.sumBy { tile -> tile.score }
-    }
-}
 
 data class Game(val board: Board = Board("spel"), val players: Array<Player>) {
     private var currentPlayer = 0
@@ -127,7 +142,6 @@ data class Player(val name: String, val tilesWon: MutableList<Tile> = mutableLis
         return if (tilesWon.isEmpty()) NullTile
         else tilesWon.last()
     }
-
 }
 
 data class Turn(val strategy: Strategy, val game: Game) {
@@ -172,7 +186,7 @@ data class Turn(val strategy: Strategy, val game: Game) {
         numberOfDiceLeft -= diceSelected.size
         moves = moves + nextMove
         Logger.log(2, "moves: $moves")
-        val total = moves.sumBy { move -> move.diceSelected.sumBy { dice -> dice.numericValue } }
+        val total = moves.sumOf { move -> move.diceSelected.sumOf { dice -> dice.numericValue } }
         Logger.log(2, "total: $total")
 
         if (strategy.shouldIContinue(moves, game)) {
@@ -259,8 +273,8 @@ fun findPlayerWithTileThatCanBeStolen(totalValue: Int, game: Game): Player? {
 }
 
 fun findTileThatCanBeStolen(playerWithTileThatCanBeStolen: Player?): Tile {
-    if (playerWithTileThatCanBeStolen == null) return NullTile
-    else return playerWithTileThatCanBeStolen.getLastWonTile()
+    return if (playerWithTileThatCanBeStolen == null) NullTile
+    else playerWithTileThatCanBeStolen.getLastWonTile()
 }
 
 class StopAfterFirstTileStrategy : Strategy() {
@@ -313,7 +327,7 @@ class StopAfterFirstTileStrategy : Strategy() {
 
 
 fun totalValueOfDice(moves: List<Move>) =
-    moves.sumBy { move -> move.diceSelected.sumBy { dice -> dice.numericValue } }
+    moves.sumOf { move -> move.diceSelected.sumOf { dice -> dice.numericValue } }
 
 fun highestTileWithValueNotBiggerThanSumOfDice(value: Int, tiles: List<Tile>): Tile {
     val possibleSolutions = tiles.filter { tile -> tile.value <= value }
@@ -324,8 +338,10 @@ fun highestTileWithValueNotBiggerThanSumOfDice(value: Int, tiles: List<Tile>): T
 
 
 data class Board(val name: String) {
-    private val firstTile = Tile(21)
-    private val lastTile = Tile(36)
+    companion object Board {
+        val firstTile = Tile(21)
+        val lastTile = Tile(36)
+    }
 
     var tiles: List<Tile> = (firstTile.value..lastTile.value).map { value -> Tile(value) }
 
@@ -333,7 +349,7 @@ data class Board(val name: String) {
         tiles = listOfTiles
     }
 
-    fun remove(tile: Tile): Board {
+    fun remove(tile: Tile): spel.Board {
         tiles = tiles.filter { t -> t != tile }
         return this
     }
@@ -349,3 +365,4 @@ object Logger {
         if (level <= logLevel) println(message)
     }
 }
+
