@@ -44,3 +44,8 @@ application {
     // Define the main class for the application.
     mainClass = 'spel.Game'
 }
+
+test {
+    minHeapSize = "128m"
+    maxHeapSize = "3G"
+}

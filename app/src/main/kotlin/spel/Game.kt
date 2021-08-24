@@ -35,9 +35,11 @@ class Simulator : CliktCommand() {
         }
         val sortedResults = results.sortedByDescending { it.totalValue(it.winner.tilesWon) }
         println("top 10")
-        sortedResults.take(10).forEach { result -> println("name: ${result.winner.name}, value: ${result.playersSortedByValue.first().second}, tilesOwnedByAPlayer:${result.tilesOwnedByAPlayer}, tilesNotOwned:${result.tilesNotOwned}") }
+        sortedResults.take(10)
+            .forEach { result -> println("name: ${result.winner.name}, value: ${result.playersSortedByValue.first().second}, tilesOwnedByAPlayer:${result.tilesOwnedByAPlayer}, tilesNotOwned:${result.tilesNotOwned}") }
         println("bottom 10")
-        sortedResults.takeLast(10).forEach { result -> println("name: ${result.winner.name}, value: ${result.playersSortedByValue.first().second}, tilesOwnedByAPlayer:${result.tilesOwnedByAPlayer}, tilesNotOwned:${result.tilesNotOwned}") }
+        sortedResults.takeLast(10)
+            .forEach { result -> println("name: ${result.winner.name}, value: ${result.playersSortedByValue.first().second}, tilesOwnedByAPlayer:${result.tilesOwnedByAPlayer}, tilesNotOwned:${result.tilesNotOwned}") }
     }
 
     data class Result(val players: Array<Player>) {
@@ -235,12 +237,13 @@ data class TakeTileMove(val turn: Turn, val game: Game) : Move() {
 
         val playerWithTileThatCanBeStolen = findPlayerWithTileThatCanBeStolen(totalValue, game)
         val tileThatCanBeStolen = findTileThatCanBeStolen(playerWithTileThatCanBeStolen)
-        tileSelected = if (tileThatCanBeStolen > tileSelectedUsingDice) {
-            playerWithTileThatCanBeStolen!!.tilesWon.removeLast()
-            tileThatCanBeStolen
-        } else {
-            tileSelectedUsingDice
-        }
+        tileSelected =
+            if (tileThatCanBeStolen > tileSelectedUsingDice) {
+                playerWithTileThatCanBeStolen!!.tilesWon.removeLast()
+                tileThatCanBeStolen
+            } else {
+                tileSelectedUsingDice
+            }
 
         if (tileSelected.value == 0)
             Logger.log(1, "Error: Tile(0) selected")
@@ -313,7 +316,7 @@ class StopAfterFirstTileStrategy : Strategy() {
 }
 
 //class ContinueIfMoreThanFiveDiceAreLeftStrategy : Strategy() {
-//    // TODO
+//    or if the odds of throwing a new value are better than 50%
 //}
 //
 //class FavourTripleThrowsStrategy : Strategy() {
@@ -323,6 +326,9 @@ class StopAfterFirstTileStrategy : Strategy() {
 //
 //class ContinueIfOddsAreHighEnoughStrategy : Strategy() {
 //    // if a player could take a tile but the odds of winning a higher value tile are better than 50% -> continue
+// odds are better if
+// - no more than half of dice values are used
+// - tiles are available ??
 //}
 
 
