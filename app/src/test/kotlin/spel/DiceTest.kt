@@ -1,10 +1,9 @@
 package spel
 
-import spel.Throw.buildTree
-import spel.Throw.findCombinationsOfLengthX
-import spel.Throw.maxDepth
 import spel.Throw.theTree
+import spel.Throw.traverseCombinationsOfLengthX
 import java.util.*
+import kotlin.math.pow
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -49,28 +48,15 @@ class ThrowTest {
     fun testTreeYieldsCorrectNumberOfCombinations() {
         Logger.logLevel = 3
         var counter = 0
-        fun collector(dice: Array<Int>) {
-            Logger.log(4, Arrays.toString(dice))
+        fun collector(dice: Array<Dice>) {
+            Logger.log(4, dice.contentToString())
             counter++
         }
 
-        Logger.log(3, Date().toString())
-        maxDepth = 5
-        theTree = buildTree(maxDepth)
-        Logger.log(3, Date().toString())
-        findCombinationsOfLengthX(theTree, 3, ::collector)
-        Logger.log(3, Date().toString())
-        Logger.log(3, "counter: ${counter}")
-        assertEquals(216, counter, "expecting 6*6*6 nodes to be visited if depth = 3")
+        Logger.log(3, "traverse to depth 8, ${Date()}")
+        traverseCombinationsOfLengthX(theTree, 8, ::collector)
+        Logger.log(3, "traverse to depth 8 (done), ${Date()}")
+        Logger.log(3, "counter: $counter")
+        assertEquals((6.0).pow(8), counter.toDouble(), "expecting 6^8 nodes to be visited if depth = 8")
     }
-}
-
-fun main(args: Array<String>) {
-    val i = 123
-    val iAsString = i.toString()
-    var digit = 0
-    val result = iAsString.map { Pair(digit++, it) }
-    println(result)
-    // turn into dice
-    // check if valid combination
 }

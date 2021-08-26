@@ -4,6 +4,7 @@ import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.int
+import kotlin.math.pow
 
 /*
 TODO:
@@ -65,7 +66,6 @@ class Simulator : CliktCommand() {
                 .sorted()
     }
 }
-
 
 data class Game(val board: Board = Board("spel"), val players: Array<Player>) {
     private var currentPlayer = 0
@@ -175,9 +175,12 @@ data class Turn(val strategy: Strategy, val game: Game) {
 
     private fun makeMove(): Move {
         Logger.log(2, "MakeMove with moves = $moves, numberOfDiceLeft: $numberOfDiceLeft, facesUses: $facesUsed")
+
         val nextMove = strategy.makeMove(game.board, this)
         val diceSelected = strategy.selectDiceFromThrow(nextMove.resultOfThrow, this)
+
         Logger.log(2, "nextMove: $nextMove, throwing: ${nextMove.resultOfThrow}, selected: $diceSelected")
+
         if (diceSelected.isEmpty()) {
             moves = moves + PlayFailedMove(game.board, this)
             return moves.last()
@@ -191,7 +194,7 @@ data class Turn(val strategy: Strategy, val game: Game) {
         val total = moves.sumOf { move -> move.diceSelected.sumOf { dice -> dice.numericValue } }
         Logger.log(2, "total: $total")
 
-        if (strategy.shouldIContinue(moves, game)) {
+        if (strategy.shouldIContinue(moves, game, this)) {
             Logger.log(2, "continue")
             return nextMove
         }
@@ -264,7 +267,7 @@ data class StopTurnMove(val turn: Turn) : Move() {
 abstract class Strategy {
     abstract fun makeMove(board: Board, turn: Turn): Move
 
-    abstract fun shouldIContinue(moves: List<Move>, game: Game): Boolean
+    abstract fun shouldIContinue(moves: List<Move>, game: Game, turn: Turn): Boolean
 
     abstract fun selectDiceFromThrow(diceInThrow: List<Dice>, turn: Turn): List<Dice>
 }
@@ -281,7 +284,7 @@ fun findTileThatCanBeStolen(playerWithTileThatCanBeStolen: Player?): Tile {
 }
 
 class StopAfterFirstTileStrategy : Strategy() {
-    override fun shouldIContinue(moves: List<Move>, game: Game): Boolean {
+    override fun shouldIContinue(moves: List<Move>, game: Game, turn: Turn): Boolean {
         Logger.log(2, "shouldIContinue, board: ${game.board}")
         val totalValue = totalValueOfDice(moves)
         Logger.log(2, "shouldIContinue, totalValue: $totalValue")
@@ -306,12 +309,8 @@ class StopAfterFirstTileStrategy : Strategy() {
         return ThrowDiceMove(board, turn)
     }
 
-    // TODO: alternative would be to select dice that add up to a stealable value or the value of a tile that is still available.
     override fun selectDiceFromThrow(diceInThrow: List<Dice>, turn: Turn): List<Dice> {
-        val diceAllowed = diceInThrow.minus(turn.facesUsed)
-        if (diceAllowed.isEmpty()) return listOf()
-        val highestValueInThrow = diceAllowed.maxByOrNull { dice -> dice.value }!!
-        return diceAllowed.filter { dice -> dice.value == highestValueInThrow.value }
+        return selectDiceFromThrowUsingHighestValueDice(diceInThrow, turn)
     }
 }
 
@@ -324,13 +323,56 @@ class StopAfterFirstTileStrategy : Strategy() {
 //
 //}
 //
-//class ContinueIfOddsAreHighEnoughStrategy : Strategy() {
-//    // if a player could take a tile but the odds of winning a higher value tile are better than 50% -> continue
-// odds are better if
-// - no more than half of dice values are used
-// - tiles are available ??
-//}
+class ContinueIfOddsAreHighEnoughStrategy : Strategy() {
+    // if a player could take a tile but the odds of winning a higher value tile are better than 50% -> continue
+    override fun makeMove(board: Board, turn: Turn): Move {
+        return ThrowDiceMove(board, turn)
+    }
 
+    override fun shouldIContinue(moves: List<Move>, game: Game, turn: Turn): Boolean {
+        if (!turn.facesUsed.contains(Dice(6))) return true
+
+        val totalValue = totalValueOfDice(moves)
+        val currentBestTileValue =
+            highestTileWithValueNotBiggerThanSumOfDice(totalValue, game.board.tiles).value
+
+        // TODO: add this? the max number of stealable tiles would equal the number of players
+        val stealableTiles =
+            game.players.mapNotNull { player -> player.tilesWon.lastOrNull() }
+
+        var throwsThatAllowTakingAHigherTile = 0
+
+        fun countThrowsThatAllowTakingAHigherTile(dice: Array< Dice>) {
+            // TODO:
+            // how about different combinations? if we need 5 and have 3 dice we could use (5, 1, 1) and (4, 3, 3)
+            // so highest value isn't always enough.
+            val value = totalValue + selectDiceFromThrow(dice.toList(), turn).sumOf { d -> d.numericValue }
+
+            val bestTile = highestTileWithValueNotBiggerThanSumOfDice(value, game.board.tiles)
+            if (bestTile.value > currentBestTileValue) throwsThatAllowTakingAHigherTile++
+        }
+
+        Throw.traverseCombinationsOfLengthX(
+            Throw.theTree,
+            turn.numberOfDiceLeft,
+            ::countThrowsThatAllowTakingAHigherTile
+        )
+        val totalCombinations = (6.0).pow(turn.numberOfDiceLeft)
+
+        return throwsThatAllowTakingAHigherTile > totalCombinations / 2
+    }
+
+    override fun selectDiceFromThrow(diceInThrow: List<Dice>, turn: Turn): List<Dice> {
+        return selectDiceFromThrowUsingHighestValueDice(diceInThrow, turn)
+    }
+}
+
+fun selectDiceFromThrowUsingHighestValueDice(diceInThrow: List<Dice>, turn: Turn): List<Dice> {
+    val diceAllowed = diceInThrow.minus(turn.facesUsed)
+    if (diceAllowed.isEmpty()) return listOf()
+    val highestValueInThrow = diceAllowed.maxByOrNull { dice -> dice.value }!!
+    return diceAllowed.filter { dice -> dice.value == highestValueInThrow.value }
+}
 
 fun totalValueOfDice(moves: List<Move>) =
     moves.sumOf { move -> move.diceSelected.sumOf { dice -> dice.numericValue } }

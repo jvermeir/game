@@ -1,5 +1,6 @@
 package spel
 
+import java.util.*
 import kotlin.random.Random
 
 fun rand(start: Int, end: Int): Int {
@@ -21,54 +22,41 @@ object Throw {
         return (Array(numberOfDice) { Config.throwDice() }).asList()
     }
 
-    var maxDepth = 1
+    private var maxDepth = 8
     var theTree: Node = buildTree(maxDepth)
 
-    fun buildTree(newMaxDepth: Int = 8): Node {
-        Logger.log(2, "building tree with depth $maxDepth")
+    private fun buildTree(newMaxDepth: Int = 8): Node {
+        Logger.log(2, "building tree with depth $maxDepth, ${Date()}")
         maxDepth = newMaxDepth
-        return Node(-1, 0)
+        val root = Node(Dice(0), 0)
+        Logger.log(2, "building tree (done): ${Date()}")
+        return root
     }
 
-    fun initCounters(depth: Int): Array<Node?> {
+    fun initLeaves(depth: Int): Array<Node?> {
         if (depth < maxDepth)
-            return Array(6) { Node(it, depth + 1) }
+            return Array(6) { Node(Dice(it + 1), depth + 1) }
         else
             return Array(6) { null }
     }
 
     class Node(
-        val key: Int,
+        val key: Dice,
         val depth: Int,
-        val counters: Array<Node?> = initCounters(depth)
+        val leaves: Array<Node?> = initLeaves(depth)
     )
 
-    fun findCombinationsOfLengthX(tree: Node, depth: Int, collector: (Array<Int>) -> Unit) {
-        fun findCombRecursive(tree: Node, depth: Int, acc: Array<Int>) {
+    fun traverseCombinationsOfLengthX(tree: Node, depth: Int, collector: (Array<Dice>) -> Unit) {
+        fun traverseCombinationsRecursive(tree: Node, depth: Int, acc: Array<Dice>) {
             if (depth > 0) {
-                tree.counters.forEach { node ->
+                tree.leaves.forEach { node ->
                     acc[depth - 1] = node!!.key
-                    findCombRecursive(node, depth - 1, acc)
+                    traverseCombinationsRecursive(node, depth - 1, acc)
                 }
             } else
                 collector(acc)
         }
-        findCombRecursive(tree, depth, Array(depth) { 0 })
-    }
-
-    fun validPermutations(valuesUsed: List<Int>, numberOfDice: Int, game: Game, currentTile: Tile): Any {
-        class Counter(var value: Int)
-
-        val numberOfValuesLeft = 6 - valuesUsed.size
-
-        val stealableTiles =
-            game.players.mapNotNull { player -> player.tilesWon.lastOrNull() }
-
-        val lowestTileLeft =
-            game.board.tiles.first { tile -> tile > currentTile }
-
-        // TDOO: buildTree and filter
-        return 10
+        traverseCombinationsRecursive(tree, depth, Array(depth) { Dice(0) })
     }
 }
 

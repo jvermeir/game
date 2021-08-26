@@ -15,7 +15,7 @@ class GameTest {
             return StopTurnMove(Turn(this, Game(Board("board"), emptyArray())))
         }
 
-        override fun shouldIContinue(moves: List<Move>, game: Game): Boolean {
+        override fun shouldIContinue(moves: List<Move>, game: Game, turn: Turn): Boolean {
             return false
         }
 
@@ -172,9 +172,47 @@ class StopAfterFirstTileStrategyTest {
         turn.moves = listOf(takeTileMove)
 
         assertFalse(
-            StopAfterFirstTileStrategy().shouldIContinue(turn.moves, game),
+            StopAfterFirstTileStrategy().shouldIContinue(turn.moves, game, turn),
             "expecting turn to stop if a tile can be taken from another player"
         )
+    }
+}
+
+// here
+class ContinueIfOddsAreHighEnoughStrategyTest {
+    @Test
+    fun testPlayerContinuesIfOddsAreBetterThan50Percent() {
+        val listOfThrows = listOf(
+            Dice(6), Dice(6), Dice(6), Dice(6), Dice(6), Dice(5), Dice(1), Dice(2)
+        ).stream().iterator()
+
+        fun testThrowDiceMethod(): Dice {
+            return listOfThrows.next()
+        }
+
+        Config.throwDiceMethod = ::testThrowDiceMethod
+
+        val board = Board("board at start of game")
+        board.tiles = listOf(Tile(23), Tile(25), Tile(30))
+
+        val player1 = Player("1", mutableListOf(), ContinueIfOddsAreHighEnoughStrategy())
+        val player2 = Player("2", mutableListOf(), ContinueIfOddsAreHighEnoughStrategy())
+        val players = arrayOf(player1, player2)
+
+        val game = Game(board, players)
+        val turn = Turn(ContinueIfOddsAreHighEnoughStrategy(), game)
+        turn.numberOfDiceLeft = 3
+        turn.facesUsed = listOf(Dice(6))
+        val throwDiceMove = ThrowDiceMove(board, turn)
+        throwDiceMove.diceSelected = listOf(Dice(6), Dice(6), Dice(6), Dice(6), Dice(6))
+        val moves = listOf(throwDiceMove)
+        // 3 dice left to find a value of 30 or higher (216 possible values, 115 are better. so we should continue
+        assertTrue(ContinueIfOddsAreHighEnoughStrategy().shouldIContinue(moves, game, turn), "expecting turn to continue")
+
+        turn.numberOfDiceLeft = 1
+        // 1 dice left to find a value of 30 or higher (216 possible values, 1 better (5 only). so we should stop
+        assertFalse(ContinueIfOddsAreHighEnoughStrategy().shouldIContinue(moves, game, turn), "expecting turn to stop")
+
     }
 }
 
