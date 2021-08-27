@@ -4,6 +4,7 @@ import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.options.default
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.int
+import kotlin.math.max
 import kotlin.math.pow
 
 /*
@@ -18,29 +19,35 @@ TODO:
 fun main(args: Array<String>) = Simulator().main(args)
 
 class Simulator : CliktCommand() {
-    private val numberOfPlayers: Int by option(help = "Number of players").int().default(3)
-    private val numberOfRuns: Int by option(help = "Number of runs").int().default(1)
+
+    private val numberOfPlayers: Int by option(help = "Number of players").int().default(4)
+    private val numberOfRuns: Int by option(help = "Number of runs").int().default(10)
 
     override fun run() {
         val results: MutableList<Result> = mutableListOf()
         for (run in 1..numberOfRuns) {
-            val players =
-                (1..numberOfPlayers).map { i -> Player("$i", mutableListOf(), StopAfterFirstTileStrategy()) }
+            val stopPlayers =
+                (1..numberOfPlayers/2).map { i -> Player("$i", mutableListOf(), StopAfterFirstTileStrategy()) }
+                    .toTypedArray()
+            val continueOddsPlayers =
+                (1..numberOfPlayers/2).map { i -> Player("${i+(numberOfPlayers/2)}", mutableListOf(), ContinueIfOddsAreHighEnoughStrategy(75)) }
                     .toTypedArray()
             val board = Board("myBoard")
-            val game = Game(board, players)
+            val game = Game(board, stopPlayers + continueOddsPlayers)
             game.play()
-            game.printGameResult()
-            println("--")
+//            game.printGameResult()
             results.add(Result(game.players))
         }
         val sortedResults = results.sortedByDescending { it.totalValue(it.winner.tilesWon) }
         println("top 10")
         sortedResults.take(10)
-            .forEach { result -> println("name: ${result.winner.name}, value: ${result.playersSortedByValue.first().second}, tilesOwnedByAPlayer:${result.tilesOwnedByAPlayer}, tilesNotOwned:${result.tilesNotOwned}") }
+            .forEach { result -> println("name: ${result.winner.name}, value: ${result.playersSortedByValue.first().second}, tilesOwnedByAPlayer:${result.tilesOwnedByAPlayer.sortedBy { t -> t.value }}, tilesNotOwned:${result.tilesNotOwned}") }
         println("bottom 10")
         sortedResults.takeLast(10)
-            .forEach { result -> println("name: ${result.winner.name}, value: ${result.playersSortedByValue.first().second}, tilesOwnedByAPlayer:${result.tilesOwnedByAPlayer}, tilesNotOwned:${result.tilesNotOwned}") }
+            .forEach { result -> println("name: ${result.winner.name}, value: ${result.playersSortedByValue.first().second}, tilesOwnedByAPlayer:${result.tilesOwnedByAPlayer.sortedBy { t -> t.value }}, tilesNotOwned:${result.tilesNotOwned}") }
+        println("wins by strategy")
+        results.groupBy { r -> r.winner.strategy.id }
+            .forEach { entry -> println("${entry.key}: ${entry.value.size}")}
     }
 
     data class Result(val players: Array<Player>) {
@@ -88,6 +95,7 @@ data class Game(val board: Board = Board("spel"), val players: Array<Player>) {
 
     fun printGameResult() {
         players.iterator().forEach { player -> println(player) }
+        println("--")
     }
 }
 
@@ -270,6 +278,8 @@ abstract class Strategy {
     abstract fun shouldIContinue(moves: List<Move>, game: Game, turn: Turn): Boolean
 
     abstract fun selectDiceFromThrow(diceInThrow: List<Dice>, turn: Turn): List<Dice>
+
+    abstract val id: String
 }
 
 fun findPlayerWithTileThatCanBeStolen(totalValue: Int, game: Game): Player? {
@@ -279,30 +289,18 @@ fun findPlayerWithTileThatCanBeStolen(totalValue: Int, game: Game): Player? {
 }
 
 fun findTileThatCanBeStolen(playerWithTileThatCanBeStolen: Player?): Tile {
-    return if (playerWithTileThatCanBeStolen == null) NullTile
-    else playerWithTileThatCanBeStolen.getLastWonTile()
+    return playerWithTileThatCanBeStolen?.getLastWonTile() ?: NullTile
 }
 
 class StopAfterFirstTileStrategy : Strategy() {
     override fun shouldIContinue(moves: List<Move>, game: Game, turn: Turn): Boolean {
-        Logger.log(2, "shouldIContinue, board: ${game.board}")
-        val totalValue = totalValueOfDice(moves)
-        Logger.log(2, "shouldIContinue, totalValue: $totalValue")
-        if (totalValue == 0) return true
         if (moves.none { move -> move.diceSelected.contains(Dice(6)) }) return true
 
-        val highestTile = highestTileWithValueNotBiggerThanSumOfDice(totalValue, game.board.tiles).value
+        val totalValue = totalValueOfDice(moves)
+        val currentBestTileValue = findCurrentBestTile(game, totalValue)
+        if (currentBestTileValue == 0) return true
 
-        val playerWithTileThatCanBeStolen = findPlayerWithTileThatCanBeStolen(totalValue, game)
-        val tileThatCanBeStolen =
-            findTileThatCanBeStolen(playerWithTileThatCanBeStolen)
-
-        Logger.log(2, "highestTile: $highestTile, tileThatCanBeStolen: $tileThatCanBeStolen")
-
-        if (tileThatCanBeStolen.value == totalValue) return false
-        if (highestTile != 0 && highestTile <= totalValue) return false
-
-        return true
+        return false
     }
 
     override fun makeMove(board: Board, turn: Turn): Move {
@@ -312,6 +310,8 @@ class StopAfterFirstTileStrategy : Strategy() {
     override fun selectDiceFromThrow(diceInThrow: List<Dice>, turn: Turn): List<Dice> {
         return selectDiceFromThrowUsingHighestValueDice(diceInThrow, turn)
     }
+
+    override val id = "StopAfterFirstTileStrategy"
 }
 
 //class ContinueIfMoreThanFiveDiceAreLeftStrategy : Strategy() {
@@ -319,34 +319,56 @@ class StopAfterFirstTileStrategy : Strategy() {
 //}
 //
 //class FavourTripleThrowsStrategy : Strategy() {
-//    // ie.: 3x4-dice > 2x5-dice > 1xWorm
+//    // ie.: 3x'4'-dice > 2x'5'-dice > 1x'Worm'
 //
 //}
 //
-class ContinueIfOddsAreHighEnoughStrategy : Strategy() {
-    // if a player could take a tile but the odds of winning a higher value tile are better than 50% -> continue
+
+fun findCurrentBestTile(game: Game, totalValue: Int): Int {
+    val playerWithTileThatCanBeStolen = findPlayerWithTileThatCanBeStolen(totalValue, game)
+    val tileThatCanBeStolen =
+        findTileThatCanBeStolen(playerWithTileThatCanBeStolen)
+
+    val currentBestTileValue =
+        max(highestTileWithValueNotBiggerThanSumOfDice(totalValue, game.board.tiles).value
+            , tileThatCanBeStolen.value)
+
+    return currentBestTileValue
+}
+
+class ContinueIfOddsAreHighEnoughStrategy(private val cutOffPercentage: Int = 50) : Strategy() {
+    // if a player could take a tile but the odds of winning a higher value tile are better than X% -> continue
     override fun makeMove(board: Board, turn: Turn): Move {
         return ThrowDiceMove(board, turn)
     }
 
     override fun shouldIContinue(moves: List<Move>, game: Game, turn: Turn): Boolean {
-        if (!turn.facesUsed.contains(Dice(6))) return true
+        if (moves.none { move -> move.diceSelected.contains(Dice(6)) }) return true
 
         val totalValue = totalValueOfDice(moves)
-        val currentBestTileValue =
-            highestTileWithValueNotBiggerThanSumOfDice(totalValue, game.board.tiles).value
+        val currentBestTileValue = findCurrentBestTile(game, totalValue)
+        if (currentBestTileValue == 0) return true
 
-        // TODO: add this? the max number of stealable tiles would equal the number of players
-        val stealableTiles =
-            game.players.mapNotNull { player -> player.tilesWon.lastOrNull() }
+        val throwsThatAllowTakingAHigherTile = findNumberOfThrowsThatAllowTakingAHigherTile(totalValue, currentBestTileValue, game, turn)
+        val totalCombinations = (6.0).pow(turn.numberOfDiceLeft)
 
+        return (100 * throwsThatAllowTakingAHigherTile) / totalCombinations > cutOffPercentage
+    }
+
+    override fun selectDiceFromThrow(diceInThrow: List<Dice>, turn: Turn): List<Dice> {
+        return selectDiceFromThrowUsingHighestValueDice(diceInThrow, turn)
+    }
+
+    override val id = "ContinueIfOddsAreHighEnoughStrategy"
+
+    fun findNumberOfThrowsThatAllowTakingAHigherTile(totalValue: Int, currentBestTileValue: Int, game: Game, turn: Turn): Int {
         var throwsThatAllowTakingAHigherTile = 0
 
         fun countThrowsThatAllowTakingAHigherTile(dice: Array< Dice>) {
             // TODO:
             // how about different combinations? if we need 5 and have 3 dice we could use (5, 1, 1) and (4, 3, 3)
             // so highest value isn't always enough.
-            val value = totalValue + selectDiceFromThrow(dice.toList(), turn).sumOf { d -> d.numericValue }
+            val value = totalValue + selectDiceFromThrowUsingHighestValueDice(dice.toList(), turn).sumOf { d -> d.numericValue }
 
             val bestTile = highestTileWithValueNotBiggerThanSumOfDice(value, game.board.tiles)
             if (bestTile.value > currentBestTileValue) throwsThatAllowTakingAHigherTile++
@@ -357,13 +379,7 @@ class ContinueIfOddsAreHighEnoughStrategy : Strategy() {
             turn.numberOfDiceLeft,
             ::countThrowsThatAllowTakingAHigherTile
         )
-        val totalCombinations = (6.0).pow(turn.numberOfDiceLeft)
-
-        return throwsThatAllowTakingAHigherTile > totalCombinations / 2
-    }
-
-    override fun selectDiceFromThrow(diceInThrow: List<Dice>, turn: Turn): List<Dice> {
-        return selectDiceFromThrowUsingHighestValueDice(diceInThrow, turn)
+        return throwsThatAllowTakingAHigherTile
     }
 }
 
@@ -379,7 +395,7 @@ fun totalValueOfDice(moves: List<Move>) =
 
 fun highestTileWithValueNotBiggerThanSumOfDice(value: Int, tiles: List<Tile>): Tile {
     val possibleSolutions = tiles.filter { tile -> tile.value <= value }
-    Logger.log(2, "highestTileWithValueNotBiggerThanX, possibleSolutions: $possibleSolutions")
+    Logger.log(3, "highestTileWithValueNotBiggerThanX, possibleSolutions: $possibleSolutions")
     if (possibleSolutions.isEmpty()) return NullTile
     return possibleSolutions.last()
 }

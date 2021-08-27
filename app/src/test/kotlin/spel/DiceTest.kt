@@ -53,10 +53,10 @@ class ThrowTest {
             counter++
         }
 
-        Logger.log(3, "traverse to depth 8, ${Date()}")
-        traverseCombinationsOfLengthX(theTree, 8, ::collector)
-        Logger.log(3, "traverse to depth 8 (done), ${Date()}")
+        Logger.log(3, "traverse to depth 4, ${Date()}")
+        traverseCombinationsOfLengthX(theTree, 4, ::collector)
+        Logger.log(3, "traverse to depth 4 (done), ${Date()}")
         Logger.log(3, "counter: $counter")
-        assertEquals((6.0).pow(8), counter.toDouble(), "expecting 6^8 nodes to be visited if depth = 8")
+        assertEquals((6.0).pow(4), counter.toDouble(), "expecting 6^4 nodes to be visited if depth = 4")
     }
 }

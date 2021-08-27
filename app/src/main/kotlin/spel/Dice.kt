@@ -22,10 +22,10 @@ object Throw {
         return (Array(numberOfDice) { Config.throwDice() }).asList()
     }
 
-    private var maxDepth = 8
+    private var maxDepth = 4
     var theTree: Node = buildTree(maxDepth)
 
-    private fun buildTree(newMaxDepth: Int = 8): Node {
+    private fun buildTree(newMaxDepth: Int = 4): Node {
         Logger.log(2, "building tree with depth $maxDepth, ${Date()}")
         maxDepth = newMaxDepth
         val root = Node(Dice(0), 0)
@@ -42,7 +42,7 @@ object Throw {
 
     class Node(
         val key: Dice,
-        val depth: Int,
+        private val depth: Int,
         val leaves: Array<Node?> = initLeaves(depth)
     )
 

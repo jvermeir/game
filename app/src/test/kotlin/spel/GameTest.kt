@@ -22,6 +22,8 @@ class GameTest {
         override fun selectDiceFromThrow(diceInThrow: List<Dice>, turn: Turn): List<Dice> {
             return listOf(Dice(25))
         }
+
+        override val id = "test"
     }
 
     @Test
