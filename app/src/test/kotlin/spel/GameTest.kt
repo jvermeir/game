@@ -1,5 +1,6 @@
 package spel
 
+import kotlin.collections.ArrayDeque
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -8,11 +9,11 @@ import kotlin.test.assertTrue
 class GameTest {
     private val player1 = Player("1", mutableListOf(), TestStrategy())
     private val player2 = Player("2", mutableListOf(), TestStrategy())
-    private val twoPlayers = arrayOf(player1, player2)
+    private val twoPlayers = ArrayDeque(listOf(player1, player2))
 
     class TestStrategy : Strategy() {
         override fun makeMove(board: Board, turn: Turn): Move {
-            return StopTurnMove(Turn(this, Game(Board("board"), emptyArray())))
+            return StopTurnMove(Turn(this, Game(Board("board"), ArrayDeque())))
         }
 
         override fun shouldIContinue(moves: List<Move>, game: Game, turn: Turn): Boolean {
@@ -50,7 +51,7 @@ class GameTest {
         board.tiles = listOf(Tile(23))
         val player1 = Player("1", mutableListOf(), StopAfterFirstTileStrategy())
         val player2 = Player("2", mutableListOf(), StopAfterFirstTileStrategy())
-        val game = Game(board, arrayOf(player1, player2))
+        val game = Game(board, ArrayDeque(listOf(player1, player2)))
         game.play()
         assertEquals(player2, game.getCurrentPlayer(), "expecting player2 to be current")
         assertEquals(Tile(23), player1.tilesWon.first(), "expecting player1 to have won Tile(23)")
@@ -62,7 +63,7 @@ class StopAfterFirstTileStrategyTest {
     @Test
     fun testHighestValueUnusedDiceIsSelected() {
         val board = Board("myBoard")
-        val game = Game(board, arrayOf())
+        val game = Game(board, ArrayDeque())
         val strategy = StopAfterFirstTileStrategy()
         val turn = Turn(strategy, game)
 
@@ -94,7 +95,7 @@ class StopAfterFirstTileStrategyTest {
         Config.throwDiceMethod = ::testThrowDiceMethod
 
         val board = Board("board at start of game")
-        val game = Game(board, arrayOf())
+        val game = Game(board, ArrayDeque())
 
         val turn = Turn(StopAfterFirstTileStrategy(), game)
         val (moves, _) = turn.play()
@@ -122,7 +123,7 @@ class StopAfterFirstTileStrategyTest {
         Config.throwDiceMethod = ::testThrowDiceMethod
 
         val board = Board("board at start of game")
-        val game = Game(board, arrayOf())
+        val game = Game(board, ArrayDeque())
 
         board.tiles = listOf(Tile(23))
         val turn = Turn(StopAfterFirstTileStrategy(), game)
@@ -143,7 +144,7 @@ class StopAfterFirstTileStrategyTest {
 
         val player1 = Player("1", mutableListOf(Tile(23)), GameTest.TestStrategy())
         val player2 = Player("2", mutableListOf(), GameTest.TestStrategy())
-        val players = arrayOf(player1, player2)
+        val players: ArrayDeque<Player> = ArrayDeque(listOf(player1, player2))
 
         val game = Game(board, players)
         game.nextPlayer()
@@ -163,7 +164,7 @@ class StopAfterFirstTileStrategyTest {
 
         val player1 = Player("1", mutableListOf(Tile(25)), GameTest.TestStrategy())
         val player2 = Player("2", mutableListOf(), GameTest.TestStrategy())
-        val players = arrayOf(player1, player2)
+        val players = ArrayDeque(listOf(player1, player2))
 
         val game = Game(board, players)
         game.nextPlayer()
@@ -199,7 +200,7 @@ class ContinueIfOddsAreHighEnoughStrategyTest {
 
         val player1 = Player("1", mutableListOf(), ContinueIfOddsAreHighEnoughStrategy())
         val player2 = Player("2", mutableListOf(), ContinueIfOddsAreHighEnoughStrategy())
-        val players = arrayOf(player1, player2)
+        val players = ArrayDeque(listOf(player1, player2))
 
         val game = Game(board, players)
         val turn = Turn(ContinueIfOddsAreHighEnoughStrategy(), game)
@@ -235,7 +236,7 @@ class TakeTileMoveTest {
         board.tiles = listOf()
         val player1 = Player("1", mutableListOf(), StopAfterFirstTileStrategy())
         val player2 = Player("2", mutableListOf(), StopAfterFirstTileStrategy())
-        val players = arrayOf(player1, player2)
+        val players = ArrayDeque(listOf(player1, player2))
 
         val game = Game(board, players)
 
@@ -256,7 +257,7 @@ class TurnTest {
     @Test
     fun testMovesArePossibleConditions() {
         val board = Board("board at start of game")
-        val game = Game(board, arrayOf())
+        val game = Game(board, ArrayDeque())
         val turn = Turn(StopAfterFirstTileStrategy(), game)
         assertTrue(turn.movesAreStillPossible(), "moves should still be possible if there are no previous moves")
 
@@ -268,7 +269,7 @@ class TurnTest {
     @Test
     fun testEndConditions() {
         val board = Board("board at start of game")
-        val game = Game(board, arrayOf())
+        val game = Game(board, ArrayDeque())
         val turn = Turn(StopAfterFirstTileStrategy(), game)
         turn.numberOfDiceLeft = 0
         assertFalse(turn.movesAreStillPossible(), "moves should be impossible if all dice were used")
@@ -289,7 +290,7 @@ class TurnTest {
         Config.throwDiceMethod = ::testThrowDiceMethod
 
         val board = Board("board at start of game")
-        val game = Game(board, arrayOf())
+        val game = Game(board, ArrayDeque())
         val turn = Turn(StopAfterFirstTileStrategy(), game)
         val (moves, _) = turn.play()
         assertEquals(2, moves.size, "expecting 2 moves")
@@ -313,7 +314,7 @@ class TurnTest {
         Config.throwDiceMethod = ::testThrowDiceMethod
 
         val board = Board("board at start of game")
-        val game = Game(board, arrayOf())
+        val game = Game(board, ArrayDeque())
         val turn = Turn(StopAfterFirstTileStrategy(), game)
         turn.numberOfDiceLeft = 6
         val (moves, _) = turn.play()
@@ -340,7 +341,7 @@ class TurnTest {
         Config.throwDiceMethod = ::testThrowDiceMethod
 
         val board = Board("board at start of game")
-        val game = Game(board, arrayOf())
+        val game = Game(board, ArrayDeque())
         val turn = Turn(StopAfterFirstTileStrategy(), game)
         turn.numberOfDiceLeft = 6
         val (moves, _) = turn.play()
@@ -369,7 +370,7 @@ class TurnTest {
         val board = Board("board at start of game")
         board.tiles = listOf(Tile(22), Tile(23))
         val player = Player("player1", mutableListOf(Tile(21)), StopAfterFirstTileStrategy())
-        val game = Game(board, arrayOf(player))
+        val game = Game(board, ArrayDeque(listOf(player)))
 
         player.doTurn(game)
 
@@ -395,7 +396,7 @@ class TurnTest {
         val board = Board("board at start of game")
         board.tiles = listOf(Tile(21), Tile(22))
         val player = Player("player1", mutableListOf(Tile(23)), StopAfterFirstTileStrategy())
-        val game = Game(board, arrayOf(player))
+        val game = Game(board,  ArrayDeque(listOf(player)))
 
         player.doTurn(game)
 
@@ -445,7 +446,7 @@ class PlayerTest {
 
         val board = Board("board at start of game")
         val player = Player("player1", mutableListOf(), StopAfterFirstTileStrategy())
-        val game = Game(board, arrayOf(player))
+        val game = Game(board,  ArrayDeque(listOf(player)))
         val playerAfterFirstRound = player.doTurn(game)
         assertEquals(listOf(Tile(36)), playerAfterFirstRound.tilesWon, "expecting Tile(36) to be won after 1st round")
         assertEquals(-1, board.tiles.lastIndexOf(Tile(36)), "expecting Tile(36) to be removed from the board")
