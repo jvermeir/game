@@ -12,6 +12,8 @@ import kotlin.math.pow
 TODO:
  - try out different strategy (
     - try for >30 tile if player owns no tiles yet
+    - choose lower value dice if early in round and only a single worm or 5 dice is thrown 
+    - be more conservative if top tile on your stack has value 1  
  - allow human players to participate
  */
 
@@ -60,9 +62,9 @@ class Simulator : CliktCommand() {
             (1..numberOfPlayers / 4).forEach { i ->
                 players.add(
                     Player(
-                        "ContinueIfOddsAreHighEnoughStrategyFavorHighestValue: ${i + 3*(numberOfPlayers / 4)}",
+                        "ContinueIfOddsAreHighEnoughFavorHighestSumStrategy: ${i + 3*(numberOfPlayers / 4)}",
                         mutableListOf(),
-                        ContinueIfOddsAreHighEnoughStrategyFavorHighestValue()
+                        ContinueIfOddsAreHighEnoughFavorHighestSumStrategy()
                     )
                 )
             }
@@ -415,12 +417,12 @@ open class ContinueIfOddsAreHighEnoughStrategy(private val cutOffPercentage: Int
     }
 }
 
-class ContinueIfOddsAreHighEnoughStrategyFavorHighestValue : ContinueIfOddsAreHighEnoughStrategy() {
+class ContinueIfOddsAreHighEnoughFavorHighestSumStrategy : ContinueIfOddsAreHighEnoughStrategy() {
     override fun selectDiceFromThrow(diceInThrow: List<Dice>, turn: Turn): List<Dice> {
         return selectDiceFromThrowUsingHighestTotalValue(diceInThrow, turn)
     }
 
-    override val id = "ContinueIfOddsAreHighEnoughStrategyFavorHighestValue"
+    override val id = "ContinueIfOddsAreHighEnoughFavorHighestSumStrategy"
 }
 
 fun findCurrentBestTile(game: Game, totalValue: Int): Int {
