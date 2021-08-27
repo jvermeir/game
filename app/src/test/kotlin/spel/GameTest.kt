@@ -182,6 +182,24 @@ class StopAfterFirstTileStrategyTest {
 }
 
 // here
+class StopEarlyFavorHighSumStrategyTest {
+    @Test
+    fun testHighestTotalValueIsSelectedFromDice() {
+        val board = Board("board at start of game")
+        board.tiles = listOf(Tile(23), Tile(25), Tile(30))
+
+        val player1 = Player("1", mutableListOf(), ContinueIfOddsAreHighEnoughStrategy())
+        val player2 = Player("2", mutableListOf(), ContinueIfOddsAreHighEnoughStrategy())
+        val players = ArrayDeque(listOf(player1, player2))
+
+        val game = Game(board, players)
+        val turn = Turn(StopEarlyFavorHighSumStrategy(), game)
+
+        val diceSelected = selectDiceFromThrowUsingHighestTotalValue(listOf(Dice(6),Dice(5),Dice(5)), turn)
+        assertEquals(listOf(Dice(5),Dice(5)), diceSelected, "expecting 2 x Dice(5) to be selected")
+    }
+}
+
 class ContinueIfOddsAreHighEnoughStrategyTest {
     @Test
     fun testPlayerContinuesIfOddsAreBetterThan50Percent() {
@@ -209,11 +227,11 @@ class ContinueIfOddsAreHighEnoughStrategyTest {
         val throwDiceMove = ThrowDiceMove(board, turn)
         throwDiceMove.diceSelected = listOf(Dice(6), Dice(6), Dice(6), Dice(6), Dice(6))
         val moves = listOf(throwDiceMove)
-        // 3 dice left to find a value of 30 or higher (216 possible values, 115 are better. so we should continue
+        // 3 dice left to find a value of 30 or higher (216 possible values, 115 are better) so we should continue
         assertTrue(ContinueIfOddsAreHighEnoughStrategy().shouldIContinue(moves, game, turn), "expecting turn to continue")
 
         turn.numberOfDiceLeft = 1
-        // 1 dice left to find a value of 30 or higher (216 possible values, 1 better (5 only). so we should stop
+        // 1 dice left to find a value of 30 or higher (216 possible values, 1 better:5 only). so we should stop
         assertFalse(ContinueIfOddsAreHighEnoughStrategy().shouldIContinue(moves, game, turn), "expecting turn to stop")
 
     }
@@ -451,13 +469,4 @@ class PlayerTest {
         assertEquals(listOf(Tile(36)), playerAfterFirstRound.tilesWon, "expecting Tile(36) to be won after 1st round")
         assertEquals(-1, board.tiles.lastIndexOf(Tile(36)), "expecting Tile(36) to be removed from the board")
     }
-}
-
-fun <T> areListsEqual(first: List<T>, second: List<T>): Boolean {
-
-    if (first.size != second.size) {
-        return false
-    }
-
-    return first.zip(second).all { (x, y) -> x == y }
 }
