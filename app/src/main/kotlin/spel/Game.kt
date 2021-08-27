@@ -2,7 +2,9 @@ package spel
 
 import com.github.ajalt.clikt.core.CliktCommand
 import com.github.ajalt.clikt.parameters.options.default
+import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
+import com.github.ajalt.clikt.parameters.types.choice
 import com.github.ajalt.clikt.parameters.types.int
 import kotlin.math.max
 import kotlin.math.pow
@@ -22,6 +24,7 @@ class Simulator : CliktCommand() {
 
     private val numberOfPlayers: Int by option(help = "Number of players").int().default(4)
     private val numberOfRuns: Int by option(help = "Number of runs").int().default(10)
+    private val printResults: Boolean by option("--print", help = "Print outcome of each simulated game").flag(default = false)
 
     override fun run() {
         val results: MutableList<Result> = mutableListOf()
@@ -35,7 +38,7 @@ class Simulator : CliktCommand() {
             val board = Board("myBoard")
             val game = Game(board, stopPlayers + continueOddsPlayers)
             game.play()
-//            game.printGameResult()
+            if (printResults) game.printGameResult()
             results.add(Result(game.players))
         }
         val sortedResults = results.sortedByDescending { it.totalValue(it.winner.tilesWon) }
