@@ -28,53 +28,33 @@ class Simulator : CliktCommand() {
     ).flag(default = false)
 
     override fun run() {
+        val strategies = listOf(
+            StopAfterFirstTileStrategy::class.java.getDeclaredConstructor().newInstance(),
+            ContinueIfOddsAreHighEnoughStrategy::class.java.getDeclaredConstructor().newInstance(),
+            StopEarlyFavorHighSumStrategy::class.java.getDeclaredConstructor().newInstance(),
+            ContinueIfOddsAreHighEnoughFavorHighestSumStrategy::class.java.getDeclaredConstructor().newInstance(),
+            TakeMoreRiskIfPlayerDoesntOwnTilesStrategy::class.java.getDeclaredConstructor().newInstance()
+        )
+        if (numberOfPlayers.mod(strategies.size) != 0) {
+            println("number-of-players should be a multiple of the number of strategies (${strategies.size})")
+            System.exit(-1)
+        }
+
         val results: MutableList<Result> = mutableListOf()
+            val numberOfPlayersPerStrategy = numberOfPlayers.div(strategies.size)
+
         for (run in 1..numberOfRuns) {
             val players: ArrayDeque<Player> = ArrayDeque()
-            (1..numberOfPlayers / 5).forEach { i ->
-                players.add(
-                    Player(
-                        "StopAfterFirstTileStrategy: $i",
-                        mutableListOf(),
-                        StopAfterFirstTileStrategy()
-                    )
-                )
-            }
-            (1..numberOfPlayers / 5).forEach { i ->
-                players.add(
-                    Player(
-                        "ContinueIfOddsAreHighEnoughStrategy: ${i + (numberOfPlayers / 4)}",
-                        mutableListOf(),
-                        ContinueIfOddsAreHighEnoughStrategy(75)
-                    )
-                )
-            }
-            (1..numberOfPlayers / 5).forEach { i ->
-                players.add(
-                    Player(
-                        "StopEarlyFavorHighSumStrategy: ${i + 2 * (numberOfPlayers / 4)}",
-                        mutableListOf(),
-                        StopEarlyFavorHighSumStrategy()
-                    )
-                )
-            }
-            (1..numberOfPlayers / 5).forEach { i ->
-                players.add(
-                    Player(
-                        "ContinueIfOddsAreHighEnoughFavorHighestSumStrategy: ${i + 3 * (numberOfPlayers / 4)}",
-                        mutableListOf(),
-                        ContinueIfOddsAreHighEnoughFavorHighestSumStrategy()
-                    )
-                )
-            }
-            (1..numberOfPlayers / 5).forEach { i ->
-                players.add(
-                    Player(
-                        "TakeMoreRiskIfPlayerDoesntOwnTilesStrategy: ${i + 3 * (numberOfPlayers / 4)}",
-                        mutableListOf(),
-                        TakeMoreRiskIfPlayerDoesntOwnTilesStrategy()
-                    )
-                )
+            (1..numberOfPlayersPerStrategy).forEach { it ->
+                strategies.forEach{ strategy ->
+                    players.add(
+                        Player(
+                            "${strategy.javaClass.name} - $it",
+                            mutableListOf(),
+                            strategy
+                        ))
+                }
+
             }
 
             val board = Board("myBoard")
