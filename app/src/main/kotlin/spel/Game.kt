@@ -6,13 +6,13 @@ import com.github.ajalt.clikt.parameters.options.flag
 import com.github.ajalt.clikt.parameters.options.option
 import com.github.ajalt.clikt.parameters.types.int
 import kotlin.math.pow
+import kotlin.system.exitProcess
 
 /*
 TODO:
  - try out different strategy (
     - choose lower value dice if early in round and only a single worm or 5 dice is thrown
     - be more conservative if top tile on your stack has value bigger than 1
-    - use Tile.score instead of Tile.value in comparisons
  - allow human players to participate
  */
 
@@ -37,24 +37,24 @@ class Simulator : CliktCommand() {
         )
         if (numberOfPlayers.mod(strategies.size) != 0) {
             println("number-of-players should be a multiple of the number of strategies (${strategies.size})")
-            System.exit(-1)
+            exitProcess(-1)
         }
 
         val results: MutableList<Result> = mutableListOf()
-            val numberOfPlayersPerStrategy = numberOfPlayers.div(strategies.size)
+        val numberOfPlayersPerStrategy = numberOfPlayers.div(strategies.size)
 
         for (run in 1..numberOfRuns) {
             val players: ArrayDeque<Player> = ArrayDeque()
-            (1..numberOfPlayersPerStrategy).forEach { it ->
-                strategies.forEach{ strategy ->
+            (1..numberOfPlayersPerStrategy).forEach {
+                strategies.forEach { strategy ->
                     players.add(
                         Player(
                             "${strategy.javaClass.name} - $it",
                             mutableListOf(),
                             strategy
-                        ))
+                        )
+                    )
                 }
-
             }
 
             val board = Board("myBoard")
@@ -84,7 +84,7 @@ class Simulator : CliktCommand() {
     }
 
     data class Result(val players: ArrayDeque<Player>, val numberOfTurns: Int) {
-        val playersSortedByValue = players
+        private val playersSortedByValue = players
             .map { player -> Pair(player, totalValue(player.tilesWon)) }
             .sortedByDescending { pair -> pair.second }
 
@@ -94,12 +94,12 @@ class Simulator : CliktCommand() {
             return tiles.sumOf { tile -> tile.score }
         }
 
-        val tilesOwnedByAPlayer = players
+        private val tilesOwnedByAPlayer = players
             .map { player -> player.tilesWon }
             .flatten()
             .sorted()
 
-        val tilesNotOwned =
+        private val tilesNotOwned =
             (Board.firstTile.value..Board.lastTile.value)
                 .map { value -> Tile(value) }
                 .minus(tilesOwnedByAPlayer)
@@ -184,9 +184,8 @@ data class Player(val name: String, val tilesWon: MutableList<Tile> = mutableLis
             val tileToBeReturned: Tile = tilesWon.removeLast()
             val lastTileOnTheBoard = game.board.tiles.last()
             if (lastTileOnTheBoard > tileToBeReturned) game.board.remove(lastTileOnTheBoard)
-            val newTiles: MutableList<Tile> = mutableListOf()
+            val newTiles: MutableList<Tile> = mutableListOf(tileToBeReturned)
             newTiles.addAll(game.board.tiles)
-            newTiles.add(tileToBeReturned)
             newTiles.sort()
             game.board.tiles = newTiles
             tilesLost.add(tileToBeReturned)
@@ -450,10 +449,10 @@ fun findCurrentBestTileValue(game: Game, totalValue: Int): Int {
         findTileThatCanBeStolen(playerWithTileThatCanBeStolen)
 
     val highestTileThatCanBeTaken = highestTileWithValueNotBiggerThanSumOfDice(totalValue, game.board.tiles)
-    if (highestTileThatCanBeTaken.score > tileThatCanBeStolen.score)
-        return highestTileThatCanBeTaken.value
+    return if (highestTileThatCanBeTaken.score > tileThatCanBeStolen.score)
+        highestTileThatCanBeTaken.value
     else
-        return tileThatCanBeStolen.value
+        tileThatCanBeStolen.value
 }
 
 fun selectDiceFromThrowUsingHighestValueDice(diceInThrow: List<Dice>, turn: Turn): List<Dice> {
