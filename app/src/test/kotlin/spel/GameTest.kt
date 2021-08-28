@@ -6,6 +6,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
+/*
+TODO: refactor duplication of testThrowDiceMethod code
+ */
+
 class GameTest {
     private val player1 = Player("1", mutableListOf(), TestStrategy())
     private val player2 = Player("2", mutableListOf(), TestStrategy())
@@ -181,7 +185,6 @@ class StopAfterFirstTileStrategyTest {
     }
 }
 
-// here
 class StopEarlyFavorHighSumStrategyTest {
     @Test
     fun testHighestTotalValueIsSelectedFromDice() {

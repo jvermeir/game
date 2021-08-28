@@ -2,7 +2,7 @@
 
 Goals:
 - learn Kotlin 
-- find the best strategy to play a board game named 'worms'
+- find the best strategy to play a board game named 'regenwormen'
 - explore integration of machines in the real world, like 
   - automatically sum the value of a throw of real world dice
   - allow one or more flesh-and-blood players 
