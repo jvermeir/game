@@ -22,3 +22,9 @@ There's probably an english language version?
 Parsing commandline arguments:
 
     https://github.com/ajalt/clikt
+
+## Todo
+
+- refactor test code to avoid duplication
+- refactor complex and lengthy methods 
+- do the 'explore integration of machines in the real world' thingy
