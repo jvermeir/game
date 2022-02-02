@@ -29,39 +29,21 @@ class Simulator : CliktCommand() {
 
     override fun run() {
         val strategies = listOf(
-            StopAfterFirstTileStrategy::class.java.getDeclaredConstructor().newInstance(),
-            ContinueIfOddsAreHighEnoughStrategy::class.java.getDeclaredConstructor().newInstance(),
-            StopEarlyFavorHighSumStrategy::class.java.getDeclaredConstructor().newInstance(),
-            ContinueIfOddsAreHighEnoughFavorHighestSumStrategy::class.java.getDeclaredConstructor().newInstance(),
-            TakeMoreRiskIfPlayerDoesntOwnTilesStrategy::class.java.getDeclaredConstructor().newInstance()
+            StopAfterFirstTileStrategy(),
+            ContinueIfOddsAreHighEnoughStrategy(),
+            StopEarlyFavorHighSumStrategy(),
+            ContinueIfOddsAreHighEnoughFavorHighestSumStrategy(),
+            TakeMoreRiskIfPlayerDoesntOwnTilesStrategy()
         )
         if (numberOfPlayers.mod(strategies.size) != 0) {
             println("number-of-players should be a multiple of the number of strategies (${strategies.size})")
             exitProcess(-1)
         }
 
-        val results: MutableList<Result> = mutableListOf()
         val numberOfPlayersPerStrategy = numberOfPlayers.div(strategies.size)
 
-        for (run in 1..numberOfRuns) {
-            val players: ArrayDeque<Player> = ArrayDeque()
-            (1..numberOfPlayersPerStrategy).forEach {
-                strategies.forEach { strategy ->
-                    players.add(
-                        Player(
-                            "${strategy.javaClass.name} - $it",
-                            mutableListOf(),
-                            strategy
-                        )
-                    )
-                }
-            }
-
-            val board = Board("myBoard")
-            val game = Game(board, players)
-            game.play()
-            if (printResults) game.printGameResult()
-            results.add(Result(game.players, game.numberOfTurns / game.players.size))
+        val results = (1..numberOfRuns).map { run ->
+            doARun(numberOfPlayersPerStrategy, strategies)
         }
         val sortedResults = results.sortedByDescending { it.totalValue(it.winner.tilesWon) }
 
@@ -81,6 +63,30 @@ class Simulator : CliktCommand() {
         results.groupBy { r -> r.winner.strategy.id }
             .entries.sortedByDescending { it.value.size }.associateBy({ it.key }, { it.value })
             .forEach { entry -> println("${entry.key}: ${entry.value.size}") }
+    }
+
+    private fun doARun(
+        numberOfPlayersPerStrategy: Int,
+        strategies: List<Strategy>,
+    ): Result {
+        val players: ArrayDeque<Player> = ArrayDeque()
+        (1..numberOfPlayersPerStrategy).forEach {
+            strategies.forEach { strategy ->
+                players.add(
+                    Player(
+                        "${strategy.javaClass.name} - $it",
+                        mutableListOf(),
+                        strategy
+                    )
+                )
+            }
+        }
+
+        val board = Board("myBoard")
+        val game = Game(board, players)
+        game.play()
+        if (printResults) game.printGameResult()
+        return Result(game.players, game.numberOfTurns / game.players.size)
     }
 
     data class Result(val players: ArrayDeque<Player>, val numberOfTurns: Int) {
