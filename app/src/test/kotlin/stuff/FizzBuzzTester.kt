@@ -6,65 +6,58 @@ import kotlin.test.assertEquals
 class FizzBuzzTester {
     val max = 100_000_000
 
-    private fun fizzBuzzTester(i: Int): String {
-        if (i % 15 == 0) return "FizzBuzz"
-        if (i % 3 == 0) return "Fizz"
-        if (i % 5 == 0) return "Buzz"
-        return "" + i
+    private fun fizzBuzzTester(i: Int): String = when {
+        i % 15 == 0 -> "FizzBuzz"
+        i % 3 == 0 -> "Fizz"
+        i % 5 == 0 -> "Buzz"
+        else -> "$i"
     }
 
-    fun runIt(method: () -> Unit, testMethodName: String) {
+    fun <T> runIt(testMethodName: String, method: () -> T): T {
         val start = System.currentTimeMillis()
-        method()
-        val runTime = System.currentTimeMillis() - start
-
-        println("$testMethodName: $runTime ms")
+        return method().also {
+            println("$testMethodName: ${System.currentTimeMillis() - start} ms")
+        }
     }
 
     @Test
-    fun fizzBuzzUsingASequence() {
-        runIt({
-            var count = 0
-            val sequence = generateSequence {
-                (count++).takeIf { it <= max }
-            }
-            sequence.iterator().forEach { fizzBuzzTester(it) }
-        }, "sequence")
+    fun `fizz Buzz Using A Sequence`() {
+        runIt("sequence") {
+            (1..max).asSequence().forEach { fizzBuzzTester(it) }
+        }
     }
 
     @Test
-    fun fizzBuzzUsingTailRecursion() {
-
+    fun `fizz Buzz Using Tail Recursion`() {
         tailrec fun next(count: Int) {
             if (count <= max) {
                 fizzBuzzTester(count)
                 next(count + 1)
             }
         }
-
-        runIt({ next(0) }, "recursive")
+        runIt("recursive") { next(0) }
     }
 
     @Test
-    fun fizzBuzzMappingOverARange() {
-        runIt({
-            (0..max).map {
+    fun `fizz Buzz Mapping Over A Range`() {
+        runIt("map over range") {
+            (0..max).forEach {
                 fizzBuzzTester(it)
             }
-        }, "map over range")
+        }
     }
 
     @Test
-    fun fizzBuzzUsingABoringLoop() {
-        runIt({
+    fun `fizz Buzz Using A Boring Loop`() {
+        runIt("boring for loop") {
             for (i in 0..max) {
                 fizzBuzzTester(i)
             }
-        }, "boring for loop")
+        }
     }
 
     @Test
-    fun fizzBuzzSanityCheck() {
+    fun `fizz Buzz Sanity Check`() {
         val expectedResults = arrayOf(
             "justIgnoreThisOK?", "1", "2", "Fizz", "4", "Buzz", "Fizz", "7", "8", "Fizz", "Buzz", "11", "Fizz", "13", "14",
             "FizzBuzz", "16", "17", "Fizz", "19", "Buzz", "Fizz", "22", "23", "Fizz", "Buzz", "26",
